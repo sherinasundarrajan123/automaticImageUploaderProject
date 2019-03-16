@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -15,6 +16,14 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,11 +31,16 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
     Bitmap bmp;
+    int holder;
     URL url1 = null;
     ImageView uploadImage,downloadImage;
     Button uploadButton,downloadButton;
@@ -39,46 +53,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        uploadImage = (ImageView) findViewById(R.id.imgUpload);
-        uploadButton = (Button) findViewById(R.id.uploadButton);
-        uploadText = (EditText) findViewById(R.id.uploadText);
         downloadImage = (ImageView) findViewById(R.id.imgDownload);
         downloadButton = (Button) findViewById(R.id.downloadButton);
-//        downloadText = (TextView) findViewById(R.id.downloadText);
         downloadText = (TextView) findViewById(R.id.downloadText);
-        uploadImage.setOnClickListener(this);
-        uploadButton.setOnClickListener(this);
+        new GetDate().execute(new ApiConnector());
+//        new GetAllCustomersTask().execute(new ApiConnector());
         downloadButton.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View view) {
-
-        switch(view.getId()){
-            case R.id.imgUpload:
                 Intent galleryIntent=new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 startActivityForResult(galleryIntent,RESULT_LOAD_IMAGE);
-                break;
-            case R.id.uploadButton:
-
-
-                break;
-            case R.id.downloadButton:
-                new GetAllCustomersTask().execute(new ApiConnector());
-
-
-                break;
+        name = "";
+        url = "";
+        downloadText.setText(name);
+//                new GetAllCustomersTask().execute(new ApiConnector());
         }
-
-    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode==RESULT_LOAD_IMAGE && resultCode==RESULT_OK && data!=null) {
             Uri selectedImage = data.getData();
-            uploadImage.setImageURI(selectedImage);
+            downloadImage.setImageURI(selectedImage);
         }
     }
 
@@ -148,13 +146,78 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     e.printStackTrace();
                 }
             }
-            downloadText.setText("Name : "+ name+ " URL : " +url);
+//            downloadText.setText((int) System.currentTimeMillis());
+
             }
         else
         {
             Log.d("jsonArray is null","Error");
         }
 
+    }
+
+    private class GetDate extends AsyncTask<ApiConnector,Long,Integer>
+    {
+        @Override
+        protected Integer doInBackground(ApiConnector... apiConnectors) {
+            int flag=0;
+            long yourmilliseconds = System.currentTimeMillis();
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+            Date resultdate = new Date(yourmilliseconds);
+            String currentDate = sdf.format(resultdate);
+            String cYear = "";
+            String cMonth = "";
+            String cDate = "";
+            cYear = currentDate.substring(currentDate.length() - 4);
+            cMonth = currentDate.substring(3,5);
+            cDate = currentDate.substring(0,2);
+            String prevDate = "";
+            JSONArray json3 = apiConnectors[0].GetPrevDate(currentDate);
+            if (json3 != null) {
+                JSONObject json1 = null;
+                try {
+                    json1 = json3.getJSONObject(0);
+                    prevDate = prevDate + json1.getString("dateinfo");
+                    url = url + json1.getString("url");
+                    name = name +json1.getString("name");
+                    String pYear = "";
+                    String pMonth = "";
+                    String pDate = "";
+
+                    pYear = prevDate.substring(prevDate.length() - 4);
+                    pMonth = prevDate.substring(3, 5);
+                    pDate = prevDate.substring(0, 2);
+//                    int flag = 0;
+                    if (pYear.equals(cYear) && pMonth.equals(cMonth) && pDate.equals(cDate)) {
+                        holder = 0;
+                    } else
+                        holder = 1;
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+//
+
+
+            return holder;
+        }
+
+        @Override
+        protected void onPostExecute(Integer integer) {
+            if(holder == 0)
+            {
+                new GetImage().execute(url);
+
+            }
+            else
+            {
+                url="";
+                name="";
+                new GetAllCustomersTask().execute(new ApiConnector());
+            }
+
+
+        }
     }
 
     private class GetImage extends AsyncTask<String,Void,Bitmap>
@@ -170,6 +233,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
             try {
                 bmp = BitmapFactory.decodeStream(url1.openConnection().getInputStream());
+                String url3 = "http://10.0.2.2/setDateInfoUrl.php";
+                HttpEntity httpEntity = null;
+                try
+                {
+                    DefaultHttpClient httpClient = new DefaultHttpClient();
+
+                    HttpPost httpPost = new HttpPost(url3);
+                    // add your data
+                    List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
+                    nameValuePairs.add(new BasicNameValuePair("url", url));
+                    httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+                    HttpResponse response = httpClient.execute(httpPost);
+                    httpEntity = response.getEntity();
+
+                } catch (ClientProtocolException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -179,6 +261,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         protected void onPostExecute(Bitmap bitmap) {
             downloadImage.setImageBitmap(bitmap);
+            downloadText.setText("Name : "+ name+ " URL : " +url);
+
             url = "";
             name = "";
         }

@@ -24,10 +24,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by Senorita Sundarrajan on 25/02/2019.
- */
-
 public class ApiConnector2 {
 
 
@@ -75,32 +71,16 @@ public class ApiConnector2 {
 
         String postReceiverUrl = "http://10.0.2.2/getSpecificUserDetails.php";
         HttpEntity resEntity = null;
-
         try {
             DefaultHttpClient httpClient = new DefaultHttpClient();
-
             // post header
             HttpPost httpPost = new HttpPost(postReceiverUrl);
-
             // add your data
             List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
             nameValuePairs.add(new BasicNameValuePair("name", name));
-//            nameValuePairs.add(new BasicNameValuePair("lastname", "Dalisay"));
-//            nameValuePairs.add(new BasicNameValuePair("email", "mike@testmail.com"));
-
             httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-//            Log.d("NameValuePairs : ",new UrlEncodedFormEntity(nameValuePairs));
-            // execute HTTP post request
-//            System.out.println(new UrlEncodedFormEntity(nameValuePairs));
             HttpResponse response = httpClient.execute(httpPost);
             resEntity = response.getEntity();
-//            final InputStream imageContentInputStream = resEntity.getContent();
-//            //Notice that we are wrapping the
-//            //imageContentInputStream with BufferedInputStream.
-//            final Bitmap imageBitmap =
-//                    BitmapFactory.decodeStream(
-//                            new BufferedInputStream(imageContentInputStream));
-////            .setImageBitmap(imageBitmap);
         } catch (ClientProtocolException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -115,10 +95,6 @@ public class ApiConnector2 {
                 String entityResponse = EntityUtils.toString(resEntity);
                 Log.e("Entity Response : ",entityResponse);
                 jsonArray1 = new JSONArray(entityResponse);
-//                if(jsonArray1==null)
-//                {
-//                    Log.e("JsonArray1 : ","Is null");
-//                }
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (JSONException e) {
